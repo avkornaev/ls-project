@@ -210,4 +210,3 @@ __marimo__/
 data/
 # Keep results tracked, but exclude model checkpoints
 results/checkpoints/
-report.md
