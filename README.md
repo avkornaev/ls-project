@@ -2,252 +2,104 @@
 
 ## Objective
 
-This project investigates whether label smoothing improves training stability
-and representation quality in a small-scale supervised classification setting.
+This project implements a controlled, reproducible experiment comparing:
 
-We compare:
+- Baseline: Cross-Entropy
+- Variant: Cross-Entropy with Label Smoothing (`epsilon = 0.1`)
 
-- Baseline: Cross-Entropy loss
-- Variant: Cross-Entropy with Label Smoothing (ε = 0.1)
-
-The study is intentionally minimal and reproducible, designed as a controlled
-micro-research experiment.
-
----
-
-## Background Theory
-
-### Cross-Entropy
-
-Standard classification training minimizes:
-
-L = - log p(y)
-
-This objective assumes the target label is perfectly reliable and encourages
-the model to assign probability 1 to the correct class.
-
-In practice, this can produce:
-
-- overconfident predictions
-- poor calibration
-- unstable gradients
-
----
-
-### Label Smoothing
-
-Label smoothing replaces the one-hot target vector with a softened distribution.
-
-Instead of:
-
-y = one-hot
-
-we use:
-
-y_smooth = (1 - ε) * one-hot + ε / K
-
-where:
-
-ε — smoothing parameter  
-K — number of classes
-
-This reduces confidence pressure and acts as a regularizer.
-
-Typical effects:
-
-- improved generalization
-- smoother optimization
-- better calibrated predictions
-- sometimes slower convergence
-
----
+The outputs are designed to feed a Prism paper draft workflow.
 
 ## Research Question
 
-Does label smoothing (ε = 0.1) improve validation stability
-and representation structure compared to standard cross-entropy?
+Does label smoothing (`epsilon = 0.1`) improve validation stability and feature
+structure versus plain cross-entropy under a fixed CIFAR-10 training protocol?
 
----
+## Fixed Protocol
 
-## Hypothesis
+- Dataset: CIFAR-10
+- Model: ResNet18 adapted for CIFAR-10 (`3x3` conv1, stride 1, no maxpool)
+- Augmentations (train only): `RandomCrop(32, padding=4)`, `RandomHorizontalFlip`
+- Optimizer: SGD (`lr=0.1`, `momentum=0.9`, `weight_decay=5e-4`)
+- Learning rate schedule: MultiStepLR milestones `[10, 15]`, gamma `0.1`
+- Batch size: `128`
+- Epochs: `20`
+- Seeds: exactly `42`, `0`, `17`
 
-Label smoothing will:
+## Repository Layout
 
-1) reduce validation loss variance across epochs
-2) produce smoother training dynamics
-3) generate more structured feature embeddings
+- `model.py`: CIFAR-10 ResNet18 with feature extraction method
+- `loss.py`: loss factory for baseline and label smoothing modes
+- `train.py`: deterministic training loop with per-epoch logs and checkpoints
+- `analyze_results.py`: seed aggregation, plotting, t-SNE, report generation
+- `results/`: generated artifacts
+- `report.md`: generated experiment summary for Prism handoff
 
-without significantly degrading accuracy.
+## Required Artifacts
 
----
+After full execution, `results/` should contain:
 
-## Experimental Design
-
-Dataset:
-
-CIFAR-10
-
-Model:
-
-ResNet18 adapted for CIFAR-10
-
-Modifications:
-
-- first convolution: 3×3 stride 1
-- no maxpool layer
-
----
-
-## Training Configuration
-
-Architecture:
-
-ResNet18 (CIFAR version)
-
-Augmentations:
-
-RandomCrop(32, padding=4)  
-RandomHorizontalFlip  
-
-Optimizer:
-
-SGD
-
-Learning rate:
-
-0.1
-
-Momentum:
-
-0.9
-
-Weight decay:
-
-0.0005
-
-Batch size:
-
-128
-
-Epochs:
-
-20
-
-Seeds:
-
-3
-
-Seed values:
-
-42  
-0  
-17
-
----
-
-## Experiments
-
-Two experiments are executed.
-
-Baseline:
-
-CrossEntropy
-
-Variant:
-
-CrossEntropy with Label Smoothing (ε = 0.1)
-
----
-
-## Evaluation
-
-Primary diagnostic:
-
-Validation loss curve
-
-Secondary diagnostics:
-
-Training loss  
-Accuracy  
-t-SNE feature visualization  
-
----
-
-## Visualization Outputs
-
-results/
-
-validation_loss.png  
-train_loss.png  
-tsne_baseline.png  
-tsne_ls.png  
-
----
-
-## Expected Outcomes
-
-If the hypothesis holds:
-
-- validation loss becomes smoother
-- embeddings become more compact
-- overfitting is slightly reduced
-
----
+- run-level metrics (`metrics.csv` and `metrics.jsonl` per run)
+- `aggregated_epoch_metrics.csv`
+- `summary_metrics.csv`
+- `validation_loss.png`
+- `train_loss.png`
+- `tsne_baseline.png`
+- `tsne_ls.png`
+- config and seed metadata
 
 ## Reproducibility
 
-All experiments are deterministic.
+All runs set deterministic seeds and log both seed and config for each run.
 
-Fixed:
+## Execution Order
 
-dataset split  
-seeds  
-hyperparameters  
+1. Train baseline for each seed.
+2. Train label smoothing for each seed.
+3. Aggregate metrics across seeds.
+4. Generate plots and t-SNE.
+5. Save summary metrics and `report.md`.
 
----
+## Environment Setup (Windows PowerShell)
 
-## Project Structure
+```powershell
+# Create and activate virtual environment
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
 
-project/
+# Install dependencies
+python -m pip install --upgrade pip
+pip install torch torchvision pandas matplotlib scikit-learn
+```
 
-src/
-configs/
-scripts/
-results/
-figures/
-report/
-paper/
+## How To Run
 
----
+Run baseline seeds:
 
-## How to Run
+```bash
+python train.py --mode baseline --seed 42
+python train.py --mode baseline --seed 0
+python train.py --mode baseline --seed 17
+```
 
-Baseline:
+Run label smoothing seeds:
 
-bash scripts/run_baseline.sh
+```bash
+python train.py --mode ls --seed 42
+python train.py --mode ls --seed 0
+python train.py --mode ls --seed 17
+```
 
-Variant:
+Aggregate and create figures/report:
 
-bash scripts/run_ls.sh
+```bash
+python analyze_results.py --results-dir results --output-dir results
+```
 
-All experiments:
+## Notes
 
-bash scripts/run_all.sh
-
----
-
-## Deliverables
-
-results/
-
-metrics.csv  
-validation_loss.png  
-tsne plots  
-
-report/
-
-report.md
-
-paper/
-
-draft paper generated by Prism agent
+- Runtime target is under 10 minutes per experiment on a single GPU; measured
+  runtime depends on hardware and environment.
+- The script uses CIFAR-10 test split as validation for logged `val_loss` and
+  `accuracy`.
+- If `py` is not found, install Python 3.11 from python.org, reopen PowerShell,
+  and rerun the setup commands.
