@@ -71,6 +71,22 @@ python -m pip install --upgrade pip
 pip install torch torchvision pandas matplotlib scikit-learn
 ```
 
+## Environment Setup (Ubuntu)
+
+```bash
+# Install Python venv tooling if needed
+sudo apt update
+sudo apt install -y python3-venv python3-pip
+
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+python -m pip install --upgrade pip
+pip install torch torchvision pandas matplotlib scikit-learn
+```
+
 ## How To Run
 
 Run baseline seeds:
@@ -103,3 +119,5 @@ python analyze_results.py --results-dir results --output-dir results
   `accuracy`.
 - If `py` is not found, install Python 3.11 from python.org, reopen PowerShell,
   and rerun the setup commands.
+- On Ubuntu, if `python` does not point to Python 3, use `python3` in the
+  commands above.
